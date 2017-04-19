@@ -34,8 +34,8 @@ local menu = MenuElement({id = "SinfulJhin", name = "Sinful | "..myHero.charName
 
 local allyHeroes
 local enemyHeroes
-local onVision
-local onWaypoint
+local onVision = {}
+local onWaypoint = {}
 
 local castSpell = {state = 0, tick = GetTickCount(), casting = GetTickCount() - 1000, mouse = mousePos}
 local aa = {state = 1, tick = GetTickCount(), tick2 = GetTickCount(), downTime = GetTickCount(), target = myHero }
@@ -121,7 +121,7 @@ local function OnVision(unit)
     return onVision[unit.networkID]
 end
 
-local function OnVisionF()
+function OnVisionF()
     if GetTickCount() - visionTick > 100 then
         for i,v in pairs(GetEnemyHeroes()) do
             OnVision(v)
@@ -519,7 +519,7 @@ local function CastSpellMM(spell,pos,range,delay)
     end
 end
 
-local function aaTick()
+function aaTick()
     if aa.state == 1 and myHero.attackData.state == 2 then
         lastTick = GetTickCount()
         aa.state = 2
@@ -667,10 +667,10 @@ function SinfulJhin:TargetMenu()
 end
 
 function SinfulJhin:MenuRTarget(v,t)
-    if SinfulJhin.Combo.R.BlackList[v.charName] ~= nil then
+    if menu.Combo.R.BlackList[v.charName] ~= nil then
         -- Callback.Del("Tick",create_menu_tick)
     else
-        SinfulJhin.Combo.R.BlackList:MenuElement({id = v.charName, name = "Blacklist: "..v.charName, value = false})
+        menu.Combo.R.BlackList:MenuElement({id = v.charName, name = "Blacklist: "..v.charName, value = false})
     end
 end
 
@@ -695,10 +695,10 @@ end
 
 function SinfulJhin:Draw()
     if myHero.dead then return end
-    if LazyMenu.Combo.R.useRkey:Value() then
+    if menu.Combo.R.useRkey:Value() then
         Draw.Circle(mousePos,500)
     end
-    if LazyMenu.Misc.drawRrange:Value() and self.chargeR == false then
+    if menu.Misc.drawRrange:Value() and self.chargeR == false then
         if Game.CanUseSpell(_R) == 0 then
             Draw.CircleMinimap(myHero.pos,self.R.range,1.5,Draw.Color(200,50,180,230))
         end
@@ -727,15 +727,16 @@ end
 
 function SinfulJhin:castingR()
     local spell = myHero:GetSpellData(_R).name ~= "JhinRShot"
+	local rBuff
     if spell then
-        local rBuff = 4
+        rBuff = 4
     end
-    if self.chargeR == false and rBuff.count > 0 then
+    if self.chargeR == false and rBuff > 0 then
         self.chargeR = true
         self.chargeRTick = GetTickCount()
         self.firstRCast = true
     end
-    if self.chargeR == true and rBuff.count == 0 then
+    if self.chargeR == true and rBuff == 0 then
         self.chargeR = false
         self.R_target = nil
     end
@@ -824,12 +825,12 @@ function SinfulJhin:useE()
     end
 end
 
-function SinfulJhin:useR()
+function SinfulJhin:useR() 
     if Game.CanUseSpell(_R) == 0 and castSpell.state == 0 then
-        local target = self:GetRTarget(self.R.range)
-        if target then
+        local target = self:GetRTarget(1000, self.R.range)
+        if target then 
             self:useRkill(target)
-            if ((self.firstRCast == true or self.chargeR ~= true) or (GetTickCount() - self.lastRtick > 500 + menu.Combo.R.targetChangeDelay:Value() and GetDistance(target.pos,self.R_target.pos) > 750) or (GetDistance(target.pos,self.R_target.pos) <= 850)) and target ~= self.R_target then
+            if ((self.firstRCast == true or self.chargeR ~= true) or (GetTickCount() - self.lastRtick > 500 + menu.Combo.R.targetChangeDelay:Value() and GetDistance(target.pos,self.R_target.pos) > 750) or (GetDistance(target.pos,self.R_target.pos) <= 850)) then
                 self.R_target = target
             end
             -- if target == self.R_target or (target ~= self.R_target and GetDistance(target.pos,self.R_target.pos) > 600 and GetTickCount() - self.lastRtick > 800 + LazyMenu.Combo.R.targetChangeDelay:Value()) then
@@ -858,7 +859,7 @@ function SinfulJhin:EnemyLoop()
                 if menu.Killsteal.useQ:Value() then
                     if Game.CanUseSpell(_Q) == 0 and GetDistance(myHero.pos,target.pos) < 1500 then
                         local hp = target.health + target.shieldAP + target.shieldAD
-                        local dmg = CalcPhysicalDamage(myHero,target,50 + 25*myHero:GetSpellData(_Q).level + ((0.3+ 0.05*myHero:GetSpellData(_Q).level)*myHero.ad))
+                        local dmg = CalcPhysicalDamage(myHero,target,50 + 25*myHero:GetSpellData(_Q).level + ((0.3+ 0.05*myHero:GetSpellData(_Q).level)*myHero.totalDamage))
                         if hp < dmg then
                             self:useQonTarget(target)
                         end
@@ -916,7 +917,7 @@ end
 
 function SinfulJhin:useWkill(target,wPred)
     if Game.Timer() - OnWaypoint(target).time > 0.05 and GetDistance(myHero.pos,wPred) < self.W.range then
-        if target.health + target.shieldAP + target.shieldAD < CalcPhysicalDamage(myHero,target,50 + 35*myHero:GetSpellData(_W).level + (0.5*myHero.ad)) then
+        if target.health + target.shieldAP + target.shieldAD < CalcPhysicalDamage(myHero,target,50 + 35*myHero:GetSpellData(_W).level + (0.5*myHero.totalDamage)) then
             CastSpell(HK_W,wPred,self.W.range)
         end
     end
